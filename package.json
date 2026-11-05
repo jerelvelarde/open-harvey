@@ -1,0 +1,34 @@
+{
+  "name": "open-harvey",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Workshop starter: Open Harvey, an open-source contract-review copilot for a legal team, built with CopilotKit and AG-UI.",
+  "scripts": {
+    "dev": "next dev -p 3200 -H 127.0.0.1",
+    "build": "next build",
+    "start": "next start -p 3200 -H 127.0.0.1",
+    "start:public": "next start -H 0.0.0.0",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@copilotkit/react-core": "1.84.1",
+    "@copilotkit/runtime": "1.84.1",
+    "@fontsource-variable/source-serif-4": "5.3.1",
+    "geist": "1.7.2",
+    "lucide-react": "1.58.0",
+    "next": "16.4.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "5.1.0"
+  }
+}

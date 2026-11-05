@@ -1,0 +1,20 @@
+{
+  "id": "cobalt-harbor",
+  "matterNumber": "MAT-2026-031",
+  "vendor": "Cobalt Harbor Logging",
+  "vendorTerm": "Cobalt Harbor",
+  "agreement": "Log Management Subscription",
+  "annualFee": 104000,
+  "termMonths": 36,
+  "holdsCustomerData": true,
+  "signed": "2026-07-24",
+  "terms": {
+    "liabilityCapMonths": { "value": 12, "cite": "§6.1", "quote": "the fees paid or payable in the twelve (12) months before the claim" },
+    "renewalTermMonths": { "value": 12, "cite": "§2.2", "quote": "renews for successive twelve (12) month periods" },
+    "renewalNoticeDays": { "value": 30, "cite": "§2.2", "quote": "at least thirty (30) days before the period ends" },
+    "dataProcessingAddendum": { "value": true, "cite": "§4.2", "quote": "processes Customer Data only under the signed data processing addendum attached to this Agreement" },
+    "breachNoticeHours": { "value": 24, "cite": "§5.2", "quote": "within twenty-four (24) hours of discovering it" },
+    "terminationForConvenienceDays": { "value": 30, "cite": "§7.1", "quote": "Northstar may terminate this Agreement for convenience with thirty (30) days' written notice" },
+    "securityEvidence": { "value": { "soc2": false, "pentest": false }, "cite": "§5.1", "quote": "Cobalt Harbor will maintain an information security program designed to protect Customer Data" }
+  }
+}

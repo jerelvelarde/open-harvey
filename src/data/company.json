@@ -1,0 +1,16 @@
+{
+  "company": "Northstar Software, Inc.",
+  "note": "Fictional company. Every person, vendor and number here is invented for the workshop.",
+  "storyDate": "2026-11-05",
+  "people": [
+    { "id": "maya", "name": "Maya Chen", "title": "Senior Counsel", "team": "Legal", "role": "reviewer" },
+    { "id": "dana", "name": "Dana Kim", "title": "Director of Engineering, Platform Infrastructure", "team": "Platform Infrastructure", "role": "business_owner" },
+    { "id": "rachel", "name": "Rachel Adler", "title": "General Counsel", "team": "Legal", "role": "general_counsel" },
+    { "id": "jordan", "name": "Jordan Blake", "title": "Head of Security", "team": "Security", "role": "security" },
+    { "id": "elena", "name": "Elena Ortiz", "title": "Chief Financial Officer", "team": "Finance", "role": "cfo" },
+    { "id": "marcus", "name": "Marcus Lee", "title": "VP Engineering", "team": "Engineering", "role": "business_owner" },
+    { "id": "priya", "name": "Priya Raman", "title": "Finance Business Partner, R&D", "team": "Finance", "role": "business_owner" },
+    { "id": "sam", "name": "Sam Okafor", "title": "HR Business Partner, Engineering", "team": "People", "role": "business_owner" }
+  ],
+  "approvalThresholds": { "cfoAboveTotalContractValue": 500000 }
+}

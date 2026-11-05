@@ -1,0 +1,20 @@
+{
+  "id": "halden-payroll",
+  "matterNumber": "MAT-2026-008",
+  "vendor": "Halden Payroll Services",
+  "vendorTerm": "Halden",
+  "agreement": "Payroll Services Agreement",
+  "annualFee": 64000,
+  "termMonths": 24,
+  "holdsCustomerData": false,
+  "signed": "2026-02-12",
+  "terms": {
+    "liabilityCapMonths": { "value": 12, "cite": "§6.1", "quote": "the fees paid or payable in the twelve (12) months before the claim" },
+    "renewalTermMonths": { "value": 12, "cite": "§2.2", "quote": "renews for successive twelve (12) month terms" },
+    "renewalNoticeDays": { "value": 30, "cite": "§2.2", "quote": "at least thirty (30) days before the end of the then-current term" },
+    "dataProcessingAddendum": { "value": false, "cite": "§4.2", "quote": "Halden handles no customer personal data" },
+    "breachNoticeHours": { "value": 48, "cite": "§4.3", "quote": "it will tell Northstar within forty-eight (48) hours" },
+    "terminationForConvenienceDays": { "value": 30, "cite": "§7.1", "quote": "Northstar may terminate this Agreement for any reason on thirty (30) days' written notice" },
+    "securityEvidence": { "value": { "soc2": false, "pentest": false }, "cite": "§5.1", "quote": "Halden will keep employee records encrypted in transit and at rest" }
+  }
+}

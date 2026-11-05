@@ -1,0 +1,20 @@
+{
+  "id": "fernway-data",
+  "matterNumber": "MAT-2026-040",
+  "vendor": "Fernway Data",
+  "vendorTerm": "Fernway",
+  "agreement": "Data Enrichment Services Agreement",
+  "annualFee": 180000,
+  "termMonths": 36,
+  "holdsCustomerData": true,
+  "signed": "2026-10-02",
+  "terms": {
+    "liabilityCapMonths": { "value": 12, "cite": "§6.1", "quote": "the fees paid or payable in the twelve (12) months before the claim" },
+    "renewalTermMonths": { "value": 12, "cite": "§2.2", "quote": "renews for successive twelve (12) month terms" },
+    "renewalNoticeDays": { "value": 60, "cite": "§2.2", "quote": "at least sixty (60) days before the current term ends" },
+    "dataProcessingAddendum": { "value": true, "cite": "§4.2", "quote": "The parties have signed a data processing addendum" },
+    "breachNoticeHours": { "value": 48, "cite": "§4.4", "quote": "Fernway will notify Northstar within forty-eight (48) hours" },
+    "terminationForConvenienceDays": { "value": 60, "cite": "§7.1", "quote": "Northstar may terminate this Agreement for convenience on sixty (60) days' written notice" },
+    "securityEvidence": { "value": { "soc2": false, "pentest": false }, "cite": "§5.1", "quote": "Fernway will run a documented security program" }
+  }
+}

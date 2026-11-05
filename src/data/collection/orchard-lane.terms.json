@@ -1,0 +1,20 @@
+{
+  "id": "orchard-lane",
+  "matterNumber": "MAT-2026-023",
+  "vendor": "Orchard Lane Recruiting",
+  "vendorTerm": "Orchard Lane",
+  "agreement": "Recruiting Services Agreement",
+  "annualFee": 45000,
+  "termMonths": 12,
+  "holdsCustomerData": false,
+  "signed": "2026-05-21",
+  "terms": {
+    "liabilityCapMonths": { "value": 12, "cite": "§6.1", "quote": "the fees paid or payable in the twelve (12) months before the claim" },
+    "renewalTermMonths": { "value": 6, "cite": "§2.2", "quote": "renews for successive six (6) month terms" },
+    "renewalNoticeDays": { "value": 15, "cite": "§2.2", "quote": "at least fifteen (15) days before the current term ends" },
+    "dataProcessingAddendum": { "value": false, "cite": "§4.2", "quote": "Orchard Lane handles no customer personal data" },
+    "breachNoticeHours": { "value": 72, "cite": "§4.3", "quote": "Orchard Lane will tell Northstar within three (3) days" },
+    "terminationForConvenienceDays": { "value": 15, "cite": "§7.1", "quote": "Northstar may end this Agreement at any time on fifteen (15) days' written notice" },
+    "securityEvidence": { "value": { "soc2": false, "pentest": false }, "cite": "§5.1", "quote": "Orchard Lane will keep candidate records in an access-controlled applicant tracking system" }
+  }
+}

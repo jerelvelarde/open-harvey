@@ -1,0 +1,20 @@
+{
+  "id": "kestrel-language",
+  "matterNumber": "MAT-2026-035",
+  "vendor": "Kestrel Language Services",
+  "vendorTerm": "Kestrel",
+  "agreement": "Translation Services Agreement",
+  "annualFee": 38000,
+  "termMonths": 12,
+  "holdsCustomerData": false,
+  "signed": "2026-08-13",
+  "terms": {
+    "liabilityCapMonths": { "value": 12, "cite": "§6.1", "quote": "the fees paid or payable in the twelve (12) months before the claim" },
+    "renewalTermMonths": { "value": 12, "cite": "§2.2", "quote": "renews for successive twelve (12) month terms" },
+    "renewalNoticeDays": { "value": 30, "cite": "§2.2", "quote": "at least thirty (30) days before the current term ends" },
+    "dataProcessingAddendum": { "value": false, "cite": "§4.2", "quote": "Kestrel handles no customer personal data under this Agreement" },
+    "breachNoticeHours": { "value": 72, "cite": "§4.4", "quote": "Kestrel will tell Northstar within seventy-two (72) hours" },
+    "terminationForConvenienceDays": { "value": 30, "cite": "§7.1", "quote": "Northstar may terminate this Agreement for convenience on thirty (30) days' written notice" },
+    "securityEvidence": { "value": { "soc2": false, "pentest": false }, "cite": "§5.1", "quote": "Kestrel will store Northstar content in its encrypted translation workspace" }
+  }
+}
