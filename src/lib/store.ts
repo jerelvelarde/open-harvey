@@ -23,6 +23,30 @@ import { z } from "zod";
 import { PERSON_IDS, STORY_DATE, storyNow } from "./company";
 import { groupSendBacks, proposeRules, sendBacksFrom, type PastReview, type RuleProposal, type SendBack } from "./learning";
 import { COLLECTION_ID, answerCell, cellKey, isCellKey, type Cell, type ColumnKey } from "./collection";
+import {
+  allPassages,
+  anchorQuote,
+  currentText,
+  originalText,
+  documentChanges,
+  documentSections,
+  emptyDoc,
+  isChanged,
+  locateEdit,
+  nextClauseCite,
+  norm,
+  snapToWords,
+  spanRuns,
+  type Author,
+  type Change,
+  type ClauseRedline,
+  type DocComment,
+  type DocPassage,
+  type DocSection,
+  type DocState,
+  type Span,
+} from "./document";
+import { getContract } from "./library";
 import { ACME_ID, MATTERS, getMatter, isMatterId, type MatterRecord } from "./matters";
 import { buildPlan, heldLine, reviewState, taskOutcome, type PlanTask, type ReviewState, type TaskOutcome } from "./plan";
 import { acceptedDeviations, deviations, recheckRedline, type Finding, type LearnedRule, type RouteStep } from "./review";
@@ -52,6 +76,8 @@ export type MatterState = {
   redlines: Record<string, { text: string; by: Writer }>;
   reasons: Record<string, string>;
   submission: Submission | null;
+  /** The document's free edits, added clauses and comments (lib/document.ts). Redlined sentences live in `redlines`. */
+  doc: DocState;
 };
 
 /** A playbook rule a person published in Insights, and who published it. `version` goes up each time it is published again. */
@@ -104,6 +130,29 @@ const routeStep = z
   .object({ personId, name: z.string(), title: z.string(), ruleId: z.enum(["PB-APR-01", "PB-APR-02", "PB-APR-03"]), reason: z.string() })
   .strict();
 
+const writer = z.enum(["human", "agent"]);
+const docState = z
+  .object({
+    edits: z.record(z.string(), z.object({ text: z.string(), by: writer }).strict()),
+    inserts: z.array(z.object({ cite: z.string(), section: z.number().int().positive(), caption: z.string(), text: z.string(), by: writer, at: z.string() }).strict()),
+    comments: z.array(
+      z
+        .object({
+          id: z.string(),
+          cite: z.string(),
+          quote: z.string(),
+          on: z.enum(["current", "original"]).nullable(),
+          text: z.string(),
+          by: writer,
+          at: z.string(),
+          replies: z.array(z.object({ by: writer, text: z.string(), at: z.string() }).strict()),
+          resolved: z.boolean(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
 const matterState = z
   .object({
     openedAt: z.string(),
@@ -124,6 +173,7 @@ const matterState = z
       })
       .strict()
       .nullable(),
+    doc: docState.default(emptyDoc),
   })
   .strict();
 
@@ -311,7 +361,7 @@ export const queueMatterIds = (s: AppState) => MATTERS.map((m) => m.id).filter((
 export function openMatter(id: string): MatterState {
   if (!isMatterId(id)) throw new Error(`Unknown matter: ${id}`);
   const existing = state.matters[id];
-  const ms: MatterState = existing ?? { openedAt: matterNow(getMatter(id)), planRules: [], planApprovedAt: null, tasks: {}, redlines: {}, reasons: {}, submission: null };
+  const ms: MatterState = existing ?? { openedAt: matterNow(getMatter(id)), planRules: [], planApprovedAt: null, tasks: {}, redlines: {}, reasons: {}, submission: null, doc: emptyDoc() };
   setState((s) => ({ ...s, activeMatterId: id, activeCollectionId: null, matters: { ...s.matters, [id]: ms } }));
   return ms;
 }
@@ -475,6 +525,195 @@ export function recheck(id: string, ruleId: string) {
     route: view.review.route.map((s) => s.name),
     stillToExplain: view.missingReasons.map((f) => f.ruleId),
   };
+}
+
+// ---------------------------------------------------------------------------------------------
+// The document (lib/document.ts): the contract with Northstar's tracked changes and comments.
+//
+// A redlined sentence IS its redline: an edit to it in the document is the same edit as in the
+// Review table, and the copilot hears it the same way. The same rule holds as for redlines: the agent
+// never overwrites text Maya wrote unless she asked. Accepting a copilot change makes it Maya's;
+// rejecting one puts the vendor's words back (for a playbook redline, that is an accepted deviation,
+// which needs a reason before it goes to the General Counsel).
+
+/** The sentences the matter's playbook redlines replace, with the redline's text once drafted. */
+export function clauseRedlines(view: MatterView): ClauseRedline[] {
+  return view.review.findings
+    .filter((f) => f.ruleId && f.status === "deviation" && f.redline)
+    .map((f) => ({ ruleId: f.ruleId!, clause: f.clause, text: view.redlines[f.ruleId!] ?? null, by: view.redlinesBy[f.ruleId!] ?? null, finding: f }));
+}
+
+export type DocumentView = {
+  sections: DocSection[];
+  changes: Change[];
+  comments: DocComment[];
+  /** Requests a learned rule sends (no sentence to replace): they read as the copilot's notes in the margin. */
+  requests: Finding[];
+};
+
+export function documentView(s: AppState, id: string): DocumentView {
+  const view = matterView(s, id);
+  const doc = view.state?.doc ?? emptyDoc();
+  const sections = documentSections(getContract(id), clauseRedlines(view), doc);
+  return { sections, changes: documentChanges(sections), comments: doc.comments, requests: view.found.filter((f) => f.status === "request" && f.ruleId) };
+}
+
+const passageOf = (id: string, cite: string): DocPassage | null => allPassages(documentView(state, id).sections).find((p) => p.cite === cite) ?? null;
+const spanOf = (id: string, key: string): Span | null => allPassages(documentView(state, id).sections).flatMap((p) => p.spans).find((s) => s.key === key) ?? null;
+const docOf = (id: string): DocState => state.matters[id]?.doc ?? emptyDoc();
+const setDoc = (id: string, update: (d: DocState) => DocState) => setMatter(id, (m) => ({ ...m, doc: update(m.doc ?? emptyDoc()) }));
+
+/** Write one span's text. A redlined sentence writes its redline; an emptied one is left as it was. */
+function writeSpan(id: string, span: Span, text: string, by: Author): RedlineEdit | null {
+  const next = norm(text);
+  if (next === span.text) return null;
+  if (span.kind === "clause") {
+    if (!next) return null;
+    setMatter(id, (m) => ({ ...m, redlines: { ...m.redlines, [span.ruleId]: { text: next, by } } }));
+    return { matterId: id, ruleId: span.ruleId, cite: span.cite, before: span.text, after: next };
+  }
+  if (span.kind === "insert") {
+    setDoc(id, (d) => ({ ...d, inserts: next ? d.inserts.map((i) => (i.cite === span.cite ? { ...i, text: next, by } : i)) : d.inserts.filter((i) => i.cite !== span.cite) }));
+    return null;
+  }
+  setDoc(id, (d) => {
+    const edits = { ...d.edits };
+    if (next === span.base) delete edits[span.key];
+    else edits[span.key] = { text: next, by };
+    return { ...d, edits };
+  });
+  return null;
+}
+
+/** Maya edits text in the document. An edit to a redlined sentence comes back for the copilot to hear, as in the Review table. */
+export function humanEditSpan(id: string, key: string, text: string): RedlineEdit | null {
+  const span = spanOf(id, key);
+  return span ? writeSpan(id, span, text, "human") : null;
+}
+
+/** Accept a copilot change: it stays, as Maya's. */
+export function acceptChange(id: string, changeId: string) {
+  const span = spanOf(id, changeId);
+  if (!span || !isChanged(span) || span.by === "human") return;
+  if (span.kind === "clause") setMatter(id, (m) => ({ ...m, redlines: { ...m.redlines, [span.ruleId]: { text: span.text, by: "human" } } }));
+  else if (span.kind === "insert") setDoc(id, (d) => ({ ...d, inserts: d.inserts.map((i) => (i.cite === span.cite ? { ...i, by: "human" } : i)) }));
+  else setDoc(id, (d) => ({ ...d, edits: { ...d.edits, [span.key]: { text: span.text, by: "human" } } }));
+}
+
+/** Reject a change: the vendor's words come back (an added clause goes). A rejected playbook redline comes back for the copilot to hear. */
+export function rejectChange(id: string, changeId: string): RedlineEdit | null {
+  const span = spanOf(id, changeId);
+  if (!span || !isChanged(span)) return null;
+  if (span.kind === "insert") {
+    setDoc(id, (d) => ({ ...d, inserts: d.inserts.filter((i) => i.cite !== span.cite), comments: d.comments.filter((c) => c.cite !== span.cite) }));
+    return null;
+  }
+  return writeSpan(id, span, span.base, "human");
+}
+
+type Refused = { ok: false; refused: true; cite: string; userValue: string; note: string };
+type Failed = { ok: false; error: string };
+const notOpen = (id: string): Failed | null => (state.matters[id] ? null : { ok: false, error: `${id} is not open. Call readMatter or readDocument first.` });
+const noPassage = (id: string, cite: string): Failed => ({ ok: false, error: `${cite} is not a passage of ${getMatter(id).vendorShort}'s ${getMatter(id).kind}. Use a cite from readDocument, e.g. "§2.3".` });
+
+export type SuggestResult = { ok: true; changeId: string; cite: string; before: string; after: string } | Refused | Failed;
+
+/** The agent's suggestEdit tool: a tracked change, in its name. Text Maya wrote is left alone unless she asked. */
+export function agentSuggestEdit(id: string, cite: string, find: string, replaceWith: string, userAsked = false): SuggestResult {
+  const closed = notOpen(id);
+  if (closed) return closed;
+  const passage = passageOf(id, cite);
+  if (!passage) return noPassage(id, cite);
+  const at = locateEdit(passage.spans, find, replaceWith);
+  if ("error" in at) return { ok: false, error: at.error };
+  const { span, next } = at;
+  if (span.by === "human" && isChanged(span) && !userAsked) {
+    return { ok: false, refused: true, cite, userValue: span.text, note: "Maya wrote this text, so it was not changed. Ask before changing it; call again with userAsked: true only if she says yes." };
+  }
+  if (!next && span.kind === "clause") return { ok: false, error: "That would empty a redlined sentence. Rewrite it instead." };
+  const before = span.text;
+  writeSpan(id, span, next, userAsked ? "human" : "agent");
+  return { ok: true, changeId: span.key, cite, before, after: next };
+}
+
+export type InsertResult = { ok: true; changeId: string; cite: string; caption: string } | Failed;
+
+/** Add a clause at the end of a section, as a tracked insertion. It gets the next free number, so no cite moves. */
+export function insertClause(id: string, section: number, caption: string, text: string, by: Author = "agent"): InsertResult {
+  const closed = notOpen(id);
+  if (closed) return closed;
+  const contract = getContract(id);
+  const cite = nextClauseCite(contract, docOf(id).inserts, section);
+  if (!cite) return { ok: false, error: `There is no section ${section}. Sections run 1–${contract.sections.length}.` };
+  const title = norm(caption).replace(/\.$/, "");
+  const body = norm(text);
+  if (!title || !body) return { ok: false, error: "A clause needs a caption and its text." };
+  setDoc(id, (d) => ({ ...d, inserts: [...d.inserts, { cite, section, caption: title, text: body, by, at: matterNow(getMatter(id)) }] }));
+  return { ok: true, changeId: `insert:${cite}`, cite, caption: title };
+}
+
+export type CommentResult = { ok: true; commentId: string; cite: string; quote: string; anchored: boolean } | Failed;
+
+/**
+ * Comment on words in a passage. The quote is looked up in the passage as it reads now, then in the
+ * vendor's words. The agent must quote words that are there; a person's comment on words that can't
+ * be found sits on the passage.
+ */
+export function addComment(id: string, cite: string, quote: string, text: string, by: Author): CommentResult {
+  const closed = notOpen(id);
+  if (closed) return closed;
+  const passage = passageOf(id, cite);
+  if (!passage) return noPassage(id, cite);
+  const body = text.trim();
+  if (!body) return { ok: false, error: "A comment needs text." };
+  const runs = spanRuns(passage.spans);
+  let words = norm(quote);
+  let at = words ? anchorQuote(runs, words) : null;
+  if (words && !at && by === "agent") return { ok: false, error: `"${words}" is not in ${cite}. It reads: "${currentText(runs)}"` };
+  if (at) {
+    // A person's selection can start or end mid-word: quote whole words.
+    const text = at.on === "current" ? currentText(runs) : originalText(runs);
+    const whole = snapToWords(text, at.start, at.end);
+    at = { ...at, ...whole };
+    words = text.slice(whole.start, whole.end);
+  }
+  const commentId = `C${docOf(id).comments.length + 1}`;
+  const comment: DocComment = { id: commentId, cite, quote: words, on: at?.on ?? null, text: body, by, at: matterNow(getMatter(id)), replies: [], resolved: false };
+  setDoc(id, (d) => ({ ...d, comments: [...d.comments, comment] }));
+  return { ok: true, commentId, cite, quote: words, anchored: Boolean(at) };
+}
+
+const commentOf = (id: string, commentId: string) => docOf(id).comments.find((c) => c.id === commentId) ?? null;
+const setComment = (id: string, commentId: string, update: (c: DocComment) => DocComment) =>
+  setDoc(id, (d) => ({ ...d, comments: d.comments.map((c) => (c.id === commentId ? update(c) : c)) }));
+const noComment = (id: string, commentId: string): Failed => ({ ok: false, error: `There is no comment ${commentId}. Comments: ${docOf(id).comments.map((c) => c.id).join(", ") || "none yet"}.` });
+
+export function replyToComment(id: string, commentId: string, text: string, by: Author): { ok: true; commentId: string; replies: number } | Failed {
+  const closed = notOpen(id);
+  if (closed) return closed;
+  const comment = commentOf(id, commentId);
+  if (!comment) return noComment(id, commentId);
+  const body = text.trim();
+  if (!body) return { ok: false, error: "A reply needs text." };
+  setComment(id, commentId, (c) => ({ ...c, resolved: false, replies: [...c.replies, { by, text: body, at: matterNow(getMatter(id)) }] }));
+  return { ok: true, commentId, replies: comment.replies.length + 1 };
+}
+
+/** Resolve a comment. The agent resolves its own comments; one Maya wrote only when she asked. */
+export function resolveComment(id: string, commentId: string, by: Author, userAsked = false): { ok: true; commentId: string } | Refused | Failed {
+  const closed = notOpen(id);
+  if (closed) return closed;
+  const comment = commentOf(id, commentId);
+  if (!comment) return noComment(id, commentId);
+  if (by === "agent" && comment.by === "human" && !userAsked) {
+    return { ok: false, refused: true, cite: comment.cite, userValue: comment.text, note: "Maya wrote this comment, so it stays open. Resolve it only if she asks; then call again with userAsked: true." };
+  }
+  setComment(id, commentId, (c) => ({ ...c, resolved: true }));
+  return { ok: true, commentId };
+}
+
+export function reopenComment(id: string, commentId: string) {
+  setComment(id, commentId, (c) => ({ ...c, resolved: false }));
 }
 
 // ---------------------------------------------------------------------------------------------

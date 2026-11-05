@@ -18,6 +18,6 @@ describe("the agents", () => {
   });
 
   it("count today from the store", () => {
-    expect(AGENTS.map((a) => agentToday(a.id, initialAppState, history))).toEqual(["Today: nothing run yet", "Today: nothing asked yet", "Today: no send-backs yet; 4 imported send-backs read"]);
+    expect(AGENTS.map((a) => agentToday(a.id, initialAppState, history))).toEqual(["Today: nothing run yet", "Today: nothing drafted yet", "Today: nothing asked yet", "Today: no send-backs yet; 4 imported send-backs read"]);
   });
 });

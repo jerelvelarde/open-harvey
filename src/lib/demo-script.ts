@@ -47,6 +47,16 @@ export const COLLECTION_SENTENCE = "Check every contract in Vendor contracts 202
 /** The Analytics page, asked in the thread. */
 export const REVIEWS_GOING_SENTENCE = "How are reviews going?";
 
+/**
+ * What the copilot does in the document (README "The document"): a comment on each redline with its
+ * rule, the clause Jordan Blake asks for, and a tracked edit to text no playbook rule covers.
+ */
+export const DOCUMENT_ASKS = {
+  comments: "Comment on each Acme redline with Northstar's reason.",
+  clause: "Add a clause that Acme sends its SOC 2 Type II report and latest pen-test summary before we sign.",
+  edit: "Edit §2.3 of the Acme MSA so service credits aren't Northstar's only remedy.",
+} as const;
+
 /** A beat before each checklist task, so the run reads as work, about half a second a task with the tool's own beat. */
 export const TASK_PAUSE_MS = 140;
 
@@ -64,6 +74,8 @@ export function nextStep(prompt: LanguageModelV3Prompt): NextStep {
   if (edits.length > 0) return afterHumanEdit(c, edits); // step 3: the edit in the review table
   const review = parseReviewRequest(text);
   if (review) return reviewMatter(c, review); // steps 1, 2 and 7
+  const inDocument = documentAsk(text);
+  if (inDocument) return workInDocument(c, inDocument, matterFor(c, text)); // the document
   if (SEND.test(text)) return send(c); // step 4: "Send it for approval."
   if (COLLECTION_ASK.test(text)) return reviewCollection(c, text); // step 8 (optional): the collection review table
   if (REVIEWS_GOING.test(text)) return reply(howReviewsAreGoing(c));
@@ -91,7 +103,8 @@ export type ActiveMatterContext = {
   editedByUser: string[];
   needsReason: string[];
   submission: { status: string; waitingFor: string | null; decisions: { approver: string; decision: string; quotedText: { comment: string } }[] } | null;
-  quotedText: { redlines: Record<string, string>; reasons: Record<string, string> };
+  document?: { changes: { changeId: string; cite: string; kind: string; by: string; ruleId?: string }[]; comments: { commentId: string; cite: string; by: string; resolved: boolean; replies: number }[] } | null;
+  quotedText: { redlines: Record<string, string>; reasons: Record<string, string>; comments?: Record<string, { quote: string; text: string }>; documentEdits?: Record<string, string> };
 };
 
 export type AnalyticsContext = {
@@ -488,6 +501,83 @@ function collectionReply(name: string, docs: number, cells: (CellResult & { key:
 }
 
 // ---------------------------------------------------------------------------------------------
+// The document: comments on the redlines, an added clause, a tracked edit. Each opens the document
+// beside the thread first (readDocument), so the person watches the change land.
+
+type DocumentAsk = keyof typeof DOCUMENT_ASKS;
+
+const DOCUMENT_PATTERNS: [RegExp, DocumentAsk][] = [
+  [/\bcomment on (each|every)\b[^.]*\bredlines?\b/i, "comments"],
+  [/\badd a clause\b[^.]*\bSOC 2\b/i, "clause"],
+  [/^\s*(please\s+)?edit §2\.3\b/i, "edit"],
+];
+
+export const documentAsk = (text: string): DocumentAsk | null => DOCUMENT_PATTERNS.find(([pattern]) => pattern.test(text))?.[1] ?? null;
+
+/** The matter a sentence names, or the one open. */
+const matterFor = (c: Conversation, text: string) => MATTER_NAMES.find(([pattern]) => pattern.test(text))?.[1] ?? c.context.activeMatter?.matterId ?? null;
+
+/** The clause Jordan Blake asks for in step 5, in contract language. */
+const SECURITY_CLAUSE = {
+  section: 5,
+  caption: "Security reports",
+  text: "Before this Agreement is signed, and once a year after that, Acme will give Northstar its most recent SOC 2 Type II report and a summary of its latest penetration test, including any critical findings and how Acme fixed them.",
+};
+/** §2.3: service credits stop being Northstar's only remedy when Acme misses its service level. */
+const REMEDY_EDIT = { cite: "§2.3", find: "which are Northstar's only remedy for the missed target", replaceWith: "which do not limit Northstar's other rights and remedies" };
+
+type DocChange = { changeId: string; cite: string; kind: string; by: string; ruleId?: string; topic?: string; position?: string; quote?: string };
+type DocComment = { commentId: string; cite: string; by: string; quotedText?: { text?: string } };
+
+function workInDocument(c: Conversation, ask: DocumentAsk, matterId: string | null): NextStep {
+  if (!matterId) return reply("Open a matter first: there is no document to work in.");
+  const read = called(c, "readDocument").at(-1);
+  if (!read) return call("readDocument", { matterId });
+  const doc = obj(read.result);
+  if (typeof doc.error === "string") return reply(`I couldn't open the document: ${doc.error}`);
+  if (ask === "comments") return commentOnRedlines(c, matterId, doc);
+  if (ask === "clause") return addSecurityClause(c, matterId, doc);
+  return suggestRemedyEdit(c, matterId);
+}
+
+function commentOnRedlines(c: Conversation, matterId: string, doc: Record<string, unknown>): NextStep {
+  const redlines = ((doc.changes as DocChange[] | undefined) ?? []).filter((ch) => ch.ruleId && ch.quote && ch.position);
+  if (redlines.length === 0) return reply("There are no redlines in the document yet. Review the contract first, and I'll comment on each one.");
+  const made = called(c, "addComment");
+  const failed = made.find((m) => obj(m.result).ok === false);
+  if (failed) return reply(`I couldn't add a comment: ${obj(failed.result).error}`);
+  const mine = [...((doc.comments as DocComment[] | undefined) ?? []).filter((cm) => cm.by === "copilot").map((cm) => cm.quotedText?.text ?? ""), ...made.map((m) => String(m.input.text))];
+  const todo = redlines.find((ch) => !mine.some((text) => text.includes(`(${ch.ruleId})`)));
+  if (todo) {
+    const position = todo.position!.replace(/\.?$/, ".");
+    return { text: "", toolCalls: [{ toolName: "addComment", input: { matterId, cite: todo.cite, quote: todo.quote, text: `Northstar's position (${todo.ruleId}): ${position}` } }], pauseMs: TASK_PAUSE_MS };
+  }
+  if (made.length === 0) return reply("Each redline already has my comment with its rule. Reply to them or resolve them in the margin.");
+  return reply(`I left ${word(made.length)} comments in the margin, one on each redline with the playbook rule behind it (${made.map((m) => m.input.cite).join(", ")}). Reply to them or resolve them there.`);
+}
+
+function addSecurityClause(c: Conversation, matterId: string, doc: Record<string, unknown>): NextStep {
+  const added = called(c, "insertClause").at(-1);
+  if (!added) {
+    const there = ((doc.passages as { cite: string; text: string; added?: boolean }[] | undefined) ?? []).find((p) => p.added && /SOC 2 Type II report/.test(p.text));
+    if (there) return reply(`${there.cite} already asks for the SOC 2 Type II report and pen-test summary. Accept or reject it in the margin.`);
+    return call("insertClause", { matterId, ...SECURITY_CLAUSE });
+  }
+  const result = obj(added.result);
+  if (result.ok !== true) return reply(`I couldn't add the clause: ${result.error}`);
+  return reply(`Added ${result.cite} ${result.caption} at the end of Section 5, as a tracked insertion in my name. Accept it in the margin to make it yours, or reject it to take it out.`);
+}
+
+function suggestRemedyEdit(c: Conversation, matterId: string): NextStep {
+  const suggested = called(c, "suggestEdit").at(-1);
+  if (!suggested) return call("suggestEdit", { matterId, ...REMEDY_EDIT });
+  const result = obj(suggested.result);
+  if (result.refused === true) return reply(`You edited ${result.cite} yourself, so I left it as you wrote it. Say so if you want me to change it anyway.`);
+  if (result.ok !== true) return reply(`I couldn't change ${REMEDY_EDIT.cite}: ${result.error}`);
+  return reply(`Suggested in ${result.cite}, tracked in my name: the service credits no longer stop Northstar claiming anything else when Acme misses its target. Accept or reject it in the margin.`);
+}
+
+// ---------------------------------------------------------------------------------------------
 // The chips after sending
 
 function status(c: Conversation): string {
@@ -531,7 +621,7 @@ function whatTheyAsked(c: Conversation): string {
 }
 
 function offScript(): string {
-  return `I'm the scripted demo model (no API key is set), so I only follow the workshop script. Try: ${DEMO_SENTENCES.map((s) => `"${s}"`).join(", ")}. Edit a redline in the Review table and I'll re-check it. Set OPENAI_API_KEY in .env.local for a real model.`;
+  return `I'm the scripted demo model (no API key is set), so I only follow the workshop script. Try: ${DEMO_SENTENCES.map((s) => `"${s}"`).join(", ")}. Edit a redline in the Review table and I'll re-check it. In the document: ${Object.values(DOCUMENT_ASKS).map((s) => `"${s}"`).join(", ")}. Set OPENAI_API_KEY in .env.local for a real model.`;
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -1,12 +1,13 @@
 // An output, opened beside the thread: the review table (editable, shared with the copilot, with the
-// redlines in its own column), the contract on a cited passage, or the approvals route. Named and
+// redlines in its own column), the contract as a live document (tracked changes and comments, opened
+// on a cited passage), or the approvals route. Named and
 // ordered as the matter's tabs. The rail's Work section opens these, and so does every cite chip.
 
 "use client";
 
 import { X } from "lucide-react";
 import { useCiteFocus } from "@/components/cite-focus";
-import { ContractViewer } from "@/components/panels/ContractViewer";
+import { DocumentEditor } from "@/components/panels/DocumentEditor";
 import { ReviewTable } from "@/components/panels/ReviewTable";
 import { closeOutput, openOutput, type Output } from "@/components/shell-state";
 import { RouteList } from "@/components/ui/RouteList";
@@ -45,7 +46,7 @@ export function OutputPanel({ view, output, onHumanEdit }: { view: MatterView; o
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4" data-testid="output-scroll">
         <div className="h-4" aria-hidden />
         {output === "review" && <ReviewTable view={view} onHumanEdit={onHumanEdit} />}
-        {output === "contract" && <ContractViewer view={view} focus={cite?.matterId === view.matter.id ? cite : null} />}
+        {output === "contract" && <DocumentEditor view={view} focus={cite?.matterId === view.matter.id ? cite : null} onHumanEdit={onHumanEdit} />}
         {output === "route" && <RouteOutput view={view} />}
       </div>
     </section>

@@ -7,7 +7,7 @@
 
 import { ArrowRight } from "lucide-react";
 import { ApprovalsPanel } from "@/components/panels/ApprovalsPanel";
-import { ContractViewer } from "@/components/panels/ContractViewer";
+import { DocumentEditor } from "@/components/panels/DocumentEditor";
 import { InsightsPanel } from "@/components/panels/InsightsPanel";
 import { MatterHeader } from "@/components/panels/MatterHeader";
 import { ReviewTable } from "@/components/panels/ReviewTable";
@@ -75,7 +75,7 @@ export function MatterView({ history, onHumanEdit }: { history: PastReview[]; on
       <div id={`panel-${tab}`} role="tabpanel" aria-labelledby={`tab-${tab}`} className="pt-3">
         {tab === "tasks" && <TasksTable view={view} />}
         {tab === "review" && <ReviewTable view={view} onHumanEdit={onHumanEdit} />}
-        {tab === "contract" && <ContractViewer view={view} focus={cite?.matterId === view.matter.id ? cite : null} inMatter />}
+        {tab === "contract" && <DocumentEditor view={view} focus={cite?.matterId === view.matter.id ? cite : null} inMatter onHumanEdit={onHumanEdit} />}
         {tab === "approvals" && <ApprovalsPanel />}
         {tab === "insights" && <InsightsPanel history={history} inMatter />}
       </div>

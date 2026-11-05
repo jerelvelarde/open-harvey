@@ -3,6 +3,7 @@
 
 import { useAppContext } from "./useAppContext";
 import { useCollectionTools } from "./useCollectionTools";
+import { useDocumentTools } from "./useDocumentTools";
 import { useGenerativeUI } from "./useGenerativeUI";
 import { useProposePlan } from "./useProposePlan";
 import { useRequestApproval } from "./useRequestApproval";
@@ -14,6 +15,7 @@ export function CopilotWiring() {
   useAppContext(); // what the agent knows
   useReviewTools(); // what the agent can do: read a matter, tick a task, re-check a redline
   useCollectionTools(); // ...and answer a collection's review table, one cell per call
+  useDocumentTools(); // ...and work in the contract itself: tracked edits, new clauses, margin comments
   useGenerativeUI(); // what the agent can show: findings, redline diffs, the re-check
   useWorkRows(); // how the agent's work reads while it runs
   useProposePlan(); // what only the human can decide: the plan...

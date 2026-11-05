@@ -1,25 +1,28 @@
-// The Agents page: the three jobs the copilot really does (lib/agents.ts), each with what it reads,
+// The Agents page: the four jobs the copilot really does (lib/agents.ts), each with what it reads,
 // what waits for a person, and the tools it calls. Start opens a new thread with the agent's opening
 // line ready as a chip (or, for the collection, its thread with the review table beside it). Nothing
 // here runs anything by itself: the line still waits for a click.
 
 "use client";
 
-import { Archive, FileText, RotateCcw } from "lucide-react";
+import { Archive, FilePen, FileText, RotateCcw } from "lucide-react";
 import { startThread } from "@/components/shell-state";
 import { Button } from "@/components/ui/Card";
 import { COLLECTION, REVIEWS_GOING, chipsFor } from "@/copilot/chips";
 import { AGENTS, agentToday, type AgentId } from "@/lib/agents";
+import { DOCUMENT_ASKS } from "@/lib/demo-script";
+import { ACME_ID } from "@/lib/matters";
 import type { PastReview } from "@/lib/learning";
 import { appStore, closeMatter, useAppState, type AppState } from "@/lib/store";
 import { openCollectionThread } from "./CollectionsPanel";
 
-const ICONS: Record<AgentId, typeof FileText> = { "contract-review": FileText, "collection-review": Archive, "send-back-analysis": RotateCcw };
+const ICONS: Record<AgentId, typeof FileText> = { "contract-review": FileText, "document-drafting": FilePen, "collection-review": Archive, "send-back-analysis": RotateCcw };
 
 /** The line each agent opens with, from where the story stands. */
 function openingLine(id: AgentId, state: AppState): string | null {
   if (id === "collection-review") return state.collectionCells.length ? null : COLLECTION;
   if (id === "send-back-analysis") return REVIEWS_GOING;
+  if (id === "document-drafting") return state.matters[ACME_ID]?.planApprovedAt ? DOCUMENT_ASKS.comments : DOCUMENT_ASKS.edit;
   return chipsFor({ ...state, activeMatterId: null, activeCollectionId: null })[0] ?? null;
 }
 
@@ -33,7 +36,7 @@ function start(id: AgentId) {
 export function AgentsPanel({ history }: { history: PastReview[] }) {
   const state = useAppState();
   return (
-    <div className="grid gap-5 @4xl:grid-cols-3" data-testid="agents">
+    <div className="grid gap-5 @4xl:grid-cols-2" data-testid="agents">
       {AGENTS.map((agent) => {
         const Icon = ICONS[agent.id];
         const line = openingLine(agent.id, state);

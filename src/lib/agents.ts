@@ -9,7 +9,7 @@ import type { PastReview } from "./learning";
 import { MATTERS } from "./matters";
 import type { AppState } from "./store";
 
-export type AgentId = "contract-review" | "collection-review" | "send-back-analysis";
+export type AgentId = "contract-review" | "document-drafting" | "collection-review" | "send-back-analysis";
 
 export type AgentCard = {
   id: AgentId;
@@ -30,6 +30,14 @@ export const AGENTS: AgentCard[] = [
     reads: "The contract and its deal terms, the Northstar vendor playbook, and the rules Rachel Adler has published.",
     gates: ["Maya approves the plan before any task runs.", "Maya sends it for approval; nothing goes to the vendor until every approver has approved.", "A redline Maya wrote is never overwritten without her say-so."],
     tools: ["readMatter", "proposePlan", "runPlanTask", "showFindings", "showRedlines", "recheckRedline", "showRecheck", "setDeviationReason", "updateRedline", "requestApproval"],
+  },
+  {
+    id: "document-drafting",
+    name: "Document drafting",
+    does: "Works in the contract itself, the way a colleague does in Word: suggests edits as tracked changes in its own name, adds clauses, and comments in the margin on the exact words, replying and resolving as the review goes.",
+    reads: "The contract as it reads now, with every tracked change and comment, and who made each one.",
+    gates: ["Maya accepts or rejects every tracked change; none counts as agreed until she does.", "Text and comments Maya wrote are never changed or resolved without her say-so."],
+    tools: ["readDocument", "suggestEdit", "insertClause", "addComment", "replyToComment", "resolveComment"],
   },
   {
     id: "collection-review",
@@ -56,6 +64,12 @@ export function agentToday(id: AgentId, state: AppState, history: readonly PastR
     case "contract-review": {
       const run = MATTERS.filter((m) => state.matters[m.id]?.planApprovedAt).length;
       return run ? `Today: ${plural(run, "review")} run, ${plural(analytics(state, history).since.tasksRun, "task")}` : "Today: nothing run yet";
+    }
+    case "document-drafting": {
+      const docs = Object.values(state.matters).map((m) => m.doc);
+      const changes = docs.reduce((n, d) => n + Object.values(d?.edits ?? {}).filter((e) => e.by === "agent").length + (d?.inserts ?? []).filter((i) => i.by === "agent").length, 0);
+      const comments = docs.reduce((n, d) => n + (d?.comments ?? []).filter((c) => c.by === "agent").length, 0);
+      return changes || comments ? `Today: ${plural(changes, "change")} suggested, ${plural(comments, "comment")}` : "Today: nothing drafted yet";
     }
     case "collection-review": {
       const cells = state.collectionCells.length;

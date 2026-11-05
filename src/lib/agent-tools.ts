@@ -6,12 +6,31 @@
 import { z } from "zod";
 import { COLLECTION_DOCS, COLLECTION_DOC_IDS, COLLECTION_ID, COLLECTION_NAME, COLUMNS, COLUMN_KEYS, columnLabel, getCollectionDoc, securityNote, securityStatus, type ColumnKey } from "./collection";
 import { CFO_THRESHOLD, getPerson } from "./company";
+import { allPassages, currentText, isChanged, spanRuns } from "./document";
 import { getContract, getLibrary } from "./library";
 import { MATTER_IDS, getMatter, matterTitle } from "./matters";
-import { agentRedline, appStore, fillCell, matterView, openCollection, openMatter, recheck, runTask, setReason } from "./store";
+import {
+  addComment,
+  agentRedline,
+  agentSuggestEdit,
+  appStore,
+  documentView,
+  fillCell,
+  insertClause,
+  matterView,
+  openCollection,
+  openMatter,
+  recheck,
+  replyToComment,
+  resolveComment,
+  runTask,
+  setReason,
+} from "./store";
 
 const matterId = z.enum(MATTER_IDS as [string, ...string[]]).describe('The matter id, e.g. "acme-msa"');
 const ruleId = z.string().describe('A playbook rule id, e.g. "PB-LIAB-01"');
+const cite = z.string().describe('A passage id from readDocument, e.g. "§2.3" (an added clause has one too, e.g. "§5.4")');
+const commentId = z.string().describe('A comment id from readDocument or the context, e.g. "C1"');
 const collectionId = z.literal(COLLECTION_ID).describe(`The collection id: "${COLLECTION_ID}" (${COLLECTION_NAME})`);
 
 export const toolSchemas = {
@@ -34,6 +53,32 @@ export const toolSchemas = {
     collectionId,
     docId: z.enum(COLLECTION_DOC_IDS as [string, ...string[]]).describe('A document in the collection, e.g. "lumen-ridge"'),
     column: z.enum(COLUMN_KEYS as [ColumnKey, ...ColumnKey[]]).describe('A column of the review table, e.g. "securityEvidence"'),
+  }),
+  readDocument: z.object({ matterId }),
+  suggestEdit: z.object({
+    matterId,
+    cite,
+    find: z.string().describe("The exact words to change, quoted from the passage as it reads now (readDocument), within one sentence"),
+    replaceWith: z.string().describe("The words to put in their place, as contract language (empty to strike them)"),
+    userAsked: z.boolean().optional().describe("true only when the user asked for this change in their own words. Without it, text the user wrote is left alone."),
+  }),
+  insertClause: z.object({
+    matterId,
+    section: z.number().int().positive().describe("The section number the clause belongs in, e.g. 5 for Security. It is added at the end of the section, with the next free number"),
+    caption: z.string().describe('A short caption, e.g. "Security reports"'),
+    text: z.string().describe("The clause, written as contract language"),
+  }),
+  addComment: z.object({
+    matterId,
+    cite,
+    quote: z.string().describe("The exact words the comment is about, quoted from the passage"),
+    text: z.string().describe("The comment, in a sentence or two"),
+  }),
+  replyToComment: z.object({ matterId, commentId, text: z.string().describe("The reply, in a sentence or two") }),
+  resolveComment: z.object({
+    matterId,
+    commentId,
+    userAsked: z.boolean().optional().describe("true only when the user asked to resolve a comment they wrote"),
   }),
 };
 
@@ -134,6 +179,51 @@ export const toolHandlers = {
       columns: COLUMNS.map(({ key, question }) => ({ column: key, question })),
     };
   },
+
+  /** Open the contract in the document beside the thread, and read it as it reads now: every passage, the tracked changes and the comments. */
+  readDocument: ({ matterId }: Args<"readDocument">) => {
+    openMatter(matterId);
+    const doc = documentView(appStore.getState(), matterId);
+    const contract = getContract(matterId);
+    const who = (by: string) => (by === "human" ? "user" : "copilot");
+    return {
+      matterId,
+      document: contract.title,
+      sections: doc.sections.map((s) => ({ section: s.number, title: s.title })),
+      passages: allPassages(doc.sections).map((p) => ({
+        cite: p.cite,
+        caption: p.caption,
+        text: currentText(spanRuns(p.spans)),
+        ...(p.spans.some(isChanged) ? { changed: true } : {}),
+        ...(p.inserted ? { added: true } : {}),
+      })),
+      changes: doc.changes.map((c) => ({
+        changeId: c.id,
+        cite: c.cite,
+        kind: c.kind,
+        by: who(c.by),
+        before: c.before,
+        after: c.after,
+        ...(c.finding ? { ruleId: c.ruleId, topic: c.finding.topic, position: c.finding.position, quote: c.finding.quote } : {}),
+      })),
+      comments: doc.comments.map((c) => ({ commentId: c.id, cite: c.cite, by: who(c.by), resolved: c.resolved, quotedText: { quote: c.quote, text: c.text, replies: c.replies.map((r) => ({ by: who(r.by), text: r.text })) } })),
+      requests: doc.requests.map((f) => ({ ruleId: f.ruleId, cite: f.cite, request: f.redline })),
+    };
+  },
+
+  /** Suggest an edit to one passage, tracked in the copilot's name. Text the user wrote is left alone unless they asked. */
+  suggestEdit: ({ matterId, cite, find, replaceWith, userAsked }: Args<"suggestEdit">) => agentSuggestEdit(matterId, cite, find, replaceWith, userAsked === true),
+
+  /** Add a clause at the end of a section, as a tracked insertion in the copilot's name. */
+  insertClause: ({ matterId, section, caption, text }: Args<"insertClause">) => insertClause(matterId, section, caption, text, "agent"),
+
+  /** Comment on exact words in a passage, in the margin. */
+  addComment: ({ matterId, cite, quote, text }: Args<"addComment">) => addComment(matterId, cite, quote, text, "agent"),
+
+  replyToComment: ({ matterId, commentId, text }: Args<"replyToComment">) => replyToComment(matterId, commentId, text, "agent"),
+
+  /** Resolve a comment: the copilot's own, or the user's only when they asked. */
+  resolveComment: ({ matterId, commentId, userAsked }: Args<"resolveComment">) => resolveComment(matterId, commentId, "agent", userAsked === true),
 
   /** Answer one cell of the review table from its document: the answer, the passage and the exact words. */
   fillCollectionCell: ({ docId, column }: Args<"fillCollectionCell">) => {

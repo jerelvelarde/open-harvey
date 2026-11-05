@@ -4,7 +4,8 @@
 // the rest. When the two share too little to read as an edit, it strikes the whole sentence and
 // inserts the whole redline instead. Pure: tested in blackline.test.ts.
 
-export type Piece = { kind: "same" | "del" | "ins"; text: string };
+/** `before`: on a "same" piece whose words differ from the vendor's only in trailing punctuation, the vendor's words. */
+export type Piece = { kind: "same" | "del" | "ins"; text: string; before?: string };
 
 /** Below this share of common words, show the redline as a replacement, not an edit. */
 const MIN_SHARED = 0.4;
@@ -26,17 +27,19 @@ export function blackline(before: string, after: string): Piece[] {
       { kind: "ins", text: b.join(" ") },
     ].filter((p) => p.text) as Piece[];
   }
-  const pieces: Piece[] = [];
-  const push = (kind: Piece["kind"], word: string) => {
+  const pieces: (Piece & { before: string })[] = [];
+  const push = (kind: Piece["kind"], word: string, before = word) => {
     const last = pieces.at(-1);
-    if (last?.kind === kind) last.text += ` ${word}`;
-    else pieces.push({ kind, text: word });
+    if (last?.kind === kind) {
+      last.text += ` ${word}`;
+      last.before += ` ${before}`;
+    } else pieces.push({ kind, text: word, before });
   };
   let i = 0;
   let j = 0;
   while (i < a.length || j < b.length) {
     if (i < a.length && j < b.length && same(a[i], b[j])) {
-      push("same", b[j]);
+      push("same", b[j], a[i]);
       i++;
       j++;
     } else if (j === b.length || (i < a.length && lcs[i + 1][j] >= lcs[i][j + 1])) {
@@ -48,5 +51,5 @@ export function blackline(before: string, after: string): Piece[] {
       j++;
     }
   }
-  return pieces;
+  return pieces.map(({ before, ...piece }) => (piece.kind === "same" && before !== piece.text ? { ...piece, before } : piece));
 }

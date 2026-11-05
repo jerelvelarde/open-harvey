@@ -88,6 +88,36 @@ const WORK: Record<string, Words> = {
     done: (_, r) => ({ text: `${r.vendor ?? "A document"} · ${r.column ?? "a cell"}`, detail: [r.answer, r.cite].filter(Boolean).join(" · ") }),
     short: () => "cell",
   },
+  readDocument: {
+    running: () => "Opening the document…",
+    done: (_, r) => ({ text: `Opened ${r.document ?? "the document"}`, detail: Array.isArray(r.changes) ? `${(r.changes as unknown[]).length} tracked changes · ${(r.comments as unknown[]).length} comments` : undefined }),
+    short: () => "Opened the document",
+  },
+  suggestEdit: {
+    running: (a) => `Editing ${a.cite ?? "the document"}…`,
+    done: (_, r) => (r.refused ? { text: "Left your text as it is", detail: "you wrote it" } : { text: `Suggested an edit in ${r.cite ?? "the document"}`, detail: "tracked" }),
+    short: (_, r) => (r.refused ? "Kept your text" : `Edited ${r.cite ?? "a passage"}`),
+  },
+  insertClause: {
+    running: (a) => `Adding ${a.caption ?? "a clause"}…`,
+    done: (_, r) => ({ text: `Added ${r.cite ?? ""} ${r.caption ?? "a clause"}`.trim(), detail: "tracked insertion" }),
+    short: (_, r) => `Added ${r.cite ?? "a clause"}`,
+  },
+  addComment: {
+    running: (a) => `Commenting on ${a.cite ?? "a passage"}…`,
+    done: (a, r) => ({ text: `Commented on ${r.cite ?? a.cite ?? "a passage"}`, detail: typeof a.text === "string" ? a.text : undefined }),
+    short: () => "comment",
+  },
+  replyToComment: {
+    running: (a) => `Replying to ${a.commentId ?? "a comment"}…`,
+    done: (a) => ({ text: `Replied to ${a.commentId ?? "a comment"}` }),
+    short: () => "Replied",
+  },
+  resolveComment: {
+    running: (a) => `Resolving ${a.commentId ?? "a comment"}…`,
+    done: (a, r) => (r.refused ? { text: `Left ${a.commentId ?? "your comment"} open`, detail: "you wrote it" } : { text: `Resolved ${a.commentId ?? "a comment"}` }),
+    short: () => "Resolved a comment",
+  },
   updateRedline: {
     running: (a) => `Updating the ${a.ruleId ?? ""} redline…`,
     done: (_, r) => (r.refused ? { text: "Left your redline as it is", detail: "you wrote it" } : { text: `Updated the ${r.ruleId ?? ""} redline` }),
@@ -160,6 +190,7 @@ export function TurnSummary({ calls, ...props }: CopilotChatWorkSummaryProps) {
   let tasks = 0;
   let deviations = 0;
   let cells = 0;
+  let comments = 0;
   for (const { toolCall, toolMessage } of calls) {
     const result = parseResult(toolMessage?.content);
     const words = WORK[toolCall.function.name];
@@ -172,6 +203,10 @@ export function TurnSummary({ calls, ...props }: CopilotChatWorkSummaryProps) {
       cells += 1;
       continue;
     }
+    if (toolCall.function.name === "addComment") {
+      comments += 1;
+      continue;
+    }
     if (toolCall.function.name === "runPlanTask") {
       tasks += 1;
       if (result.result === "deviation") deviations += 1;
@@ -182,5 +217,6 @@ export function TurnSummary({ calls, ...props }: CopilotChatWorkSummaryProps) {
   if (tasks) steps.push(`Ran ${tasks} ${tasks === 1 ? "task" : "tasks"}`);
   if (deviations) steps.push(`${deviations} ${deviations === 1 ? "deviation" : "deviations"}`);
   if (cells) steps.push(`Filled ${cells} ${cells === 1 ? "cell" : "cells"}`);
+  if (comments) steps.push(`Left ${comments} ${comments === 1 ? "comment" : "comments"}`);
   return <WorkSummary {...props} steps={steps} live={live} />;
 }
