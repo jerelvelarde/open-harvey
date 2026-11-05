@@ -17,6 +17,16 @@ Built for the CopilotKit workshop *Building Enterprise-Ready Functional Copilots
 PT). The story it plays is "Signed by Friday". Next.js App Router, CopilotKit 1.84 (v2 API), AG-UI, one
 `BuiltInAgent`.
 
+## See it
+
+Recorded on the scripted mock, with no key: the ask, the plan Maya approves, and the checklist working
+itself down (steps 1 and 2 of the [demo script](#demo-script-7-steps-and-an-optional-8th)).
+
+![Open Harvey reads the Acme Cloud MSA, proposes a 17-task review plan and runs nothing until Approve plan; then the rail's checklist works itself down to 16 of 17, with task 17 held until every approver has approved](docs/media/01-plan-and-run.gif)
+
+The whole demo, steps 1 to 8, in one take: [open-harvey-demo.mp4](docs/media/open-harvey-demo.mp4) (2 minutes).
+Each step below has its own clip.
+
 ## Run it (no key needed)
 
 You need Node.js 22.12 or later (24 works too).
@@ -95,12 +105,18 @@ her judgment, so the presenter types it.
    review to Rachel Adler, Jordan Blake and Elena Ortiz for approval?" with the route, the rule behind each
    approver and your reason, and **Send for approval** / **Keep editing**. Nothing is sent until you click,
    and nothing goes to Acme until every approver has approved.
+
+   ![Steps 3 and 4: Maya pastes a 6-month cap into the §8.2 redline; the copilot re-checks it (still deviates from PB-LIAB-01), asks only for her reason, records it, and shows the approval card before anything is sent](docs/media/02-edit-and-gate.gif)
+
 5. **Approvals.** Open the Acme Cloud Space in the sidebar: on the Tasks tab the copilot's note reads "Rachel, Maya needs your
    approval on the Acme Cloud review." Open approvals. Acting as Rachel (she sees the one position below
    the playbook, the 6-month cap with the $1,000,000 data-breach cap, and Maya's reason): **Approve**.
    Acting as Jordan: write "Ask Acme for their SOC 2 Type II report and latest pen-test summary before we
    sign. We need this whenever a vendor holds customer data." and **Send back**. His words appear once, in
    his route row; the header says "Sent back" and "1 of 3 approved".
+
+   ![Step 5 and the Govern beat: acting as Rachel Adler, Approve; acting as Jordan Blake, send it back for the SOC 2 Type II report and pen-test summary; then Analytics shows before and since go-live, why reviews come back, and the decision log](docs/media/03-approvals-and-analytics.gif)
+
 6. **Learning.** Open **Insights** (its badge lights only now): "First new send-back since go-live ·
    matches 3 in the imported history". The proposed rule, **PB-SEC-01 "Security evidence for data
    processors"**, sits beside the approvers' words (Lumen Ridge, Cobalt Harbor, Fernway and Acme today).
@@ -121,6 +137,8 @@ her judgment, so the presenter types it.
    every gated action, who took it and when. "How are reviews going?" in a thread answers from the same
    figures.
 
+   ![Steps 6 and 7: Insights matches Jordan's send-back to three past ones; acting as Rachel, Publish to the copilot; then the Brightwater Metrics plan includes the learned task (Learned v1), and the route adds Jordan Blake for it](docs/media/04-learning.gif)
+
 8. **(Optional) The whole portfolio.** Once PB-SEC-01 is published, click **New thread** and type
    "Check every contract in Vendor contracts 2026 for the security evidence PB-SEC-01 asks for." The
    copilot opens the collection (eight vendor contracts: the two in review and six signed) with its review
@@ -133,6 +151,8 @@ her judgment, so the presenter types it.
    redlines, and Acme's goes out with the resubmission. Kestrel, Orchard Lane and Halden hold no customer
    data, so the rule doesn't apply. **Collections** holds the same table with all six questions; **Agents** lists the three
    jobs the copilot does, with the tools each calls, and Start opens a thread with its first line ready.
+
+   ![Step 8: a new thread checks all eight vendor contracts for the security evidence PB-SEC-01 asks for, filling the review table one cited cell per tool call](docs/media/05-portfolio.gif)
 
 ## Deploy it
 
