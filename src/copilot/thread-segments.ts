@@ -1,5 +1,5 @@
 // Which messages belong to which matter, so each matter reads as its own thread. A matter's thread
-// starts at the user message whose turn opened it (the copilot's readMatter call for that matter) and
+// starts at the user message whose turn opened it (the copilot's readMatter or readDocument call for it) and
 // runs until another matter is opened. Messages before any matter was opened belong to the first one.
 // Pure, so it is tested on its own (thread-segments.test.ts); ChatPanel.tsx uses it to show only the
 // open matter's messages, with a divider when earlier matters' messages are set aside. A collection's
@@ -11,7 +11,7 @@ type Msg = { id: string; role: string; toolCalls?: { function: { name: string; a
 export type Segment = { matterId: string; start: number; end: number };
 
 /** The calls that open a thread, and the argument that names it. */
-const OPENS: Record<string, "matterId" | "collectionId"> = { readMatter: "matterId", readCollection: "collectionId" };
+const OPENS: Record<string, "matterId" | "collectionId"> = { readMatter: "matterId", readDocument: "matterId", readCollection: "collectionId" };
 
 function readThreadId(name: string, args: string): string | null {
   const key = OPENS[name];

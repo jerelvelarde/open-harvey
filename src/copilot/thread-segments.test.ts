@@ -28,4 +28,11 @@ describe("threads by matter", () => {
     expect(matterThread([user("u1")], null).messages).toHaveLength(1);
     expect(matterThread([user("u1")], "acme-msa").messages).toHaveLength(1);
   });
+
+  it("opening the document counts as opening its matter, so a document ask from a new thread joins that matter's thread", () => {
+    const readDoc = (id: string, matterId: string) => ({ id, role: "assistant", toolCalls: [{ function: { name: "readDocument", arguments: JSON.stringify({ matterId }) } }] });
+    const asked = [...thread, user("u4"), readDoc("a6", "acme-msa"), say("a7")];
+    expect(threadSegments(asked).at(-1)).toEqual({ matterId: "acme-msa", start: 8, end: 11 });
+    expect(threadSegments([user("u1"), read("a1", "acme-msa"), user("u2"), readDoc("a2", "acme-msa")])).toEqual([{ matterId: "acme-msa", start: 0, end: 4 }]); // same matter: one thread
+  });
 });

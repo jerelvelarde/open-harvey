@@ -149,7 +149,7 @@ function throughStep4(s: Session) {
 
 describe("0. the opening", () => {
   it("offers the opening line, and the mock understands it", () => {
-    expect(chips()).toEqual([DEMO_SENTENCES[0]]);
+    expect(chips()).toEqual([DEMO_SENTENCES[0], DOCUMENT_ASKS.edit, REVIEWS_GOING_SENTENCE]);
     expect(parseReviewRequest(DEMO_SENTENCES[0])).toBe(ACME);
   });
 });
@@ -176,7 +176,7 @@ describe("1. the ask: the plan, and the gate that holds it", () => {
     expect(names(steps)).toEqual([]);
     expect(lastReply(steps)).toBe("OK, nothing ran. Ask me again when you're ready.");
     expect(view().doneCount).toBe(0);
-    expect(chips()).toEqual([DEMO_SENTENCES[0]]);
+    expect(chips()).toEqual([DEMO_SENTENCES[0], DOCUMENT_ASKS.clause, DOCUMENT_ASKS.edit, REVIEWS_GOING_SENTENCE]);
   });
 });
 
@@ -203,7 +203,7 @@ describe("2. the run", () => {
     ]);
     // The chat's words and every screen's counts come from the same place
     expect(matterCounts(view())).toMatchObject({ checks: 12, pass: 5, deviations: 7, high: 3, toVendor: 7 });
-    expect(chips()).toEqual([DEMO_SENTENCES[2]]);
+    expect(chips()).toEqual([DEMO_SENTENCES[2], DOCUMENT_ASKS.comments, DOCUMENT_ASKS.clause, DOCUMENT_ASKS.edit]);
   });
 });
 
@@ -224,7 +224,7 @@ describe("3. the human edit", () => {
     });
     expect(view().redlines["PB-LIAB-01"]).toBe(SIX);
     expect(view().status).toBe("needs_reason");
-    expect(chips()).toEqual([]); // the reason is Maya's judgment: she types it, no chip offers it
+    expect(chips()).toEqual([DEMO_SENTENCES[1], DOCUMENT_ASKS.comments, DOCUMENT_ASKS.clause, DOCUMENT_ASKS.edit]); // the demo script's reason, ready to send
   });
 
   it("records the reason in Maya's words and leaves her redline alone", () => {
@@ -237,7 +237,7 @@ describe("3. the human edit", () => {
     );
     expect(view().redlines["PB-LIAB-01"]).toBe(SIX);
     expect(view().status).toBe("ready");
-    expect(chips()).toEqual([DEMO_SENTENCES[2]]);
+    expect(chips()).toEqual([DEMO_SENTENCES[2], DOCUMENT_ASKS.comments, DOCUMENT_ASKS.clause, DOCUMENT_ASKS.edit]);
   });
 
   it("asks for the reason instead of opening the send card while one is missing", () => {
@@ -264,7 +264,7 @@ describe("4. the gate", () => {
     );
     expect(view().status).toBe("pending");
     expect(view().state?.submission?.reasons).toEqual({ "PB-LIAB-01": DEMO_SENTENCES[1] });
-    expect(chips()).toEqual(["Where is the Acme Cloud review?"]);
+    expect(chips()).toEqual(["Where is the Acme Cloud review?", DOCUMENT_ASKS.comments, DOCUMENT_ASKS.clause, DOCUMENT_ASKS.edit]);
   });
 
   it("Keep editing sends nothing", () => {
@@ -285,7 +285,7 @@ describe("5 and 6. approvals, then learning", () => {
       "The Acme Cloud · Master Services Agreement is with Jordan Blake; Rachel Adler approved. You'll see each decision in the Approvals tab.",
     );
     recordDecision(ACME, "sent_back", JORDAN);
-    expect(chips()).toEqual(["What did Jordan ask for?"]);
+    expect(chips()).toEqual(["What did Jordan ask for?", DOCUMENT_ASKS.clause, DOCUMENT_ASKS.comments, DOCUMENT_ASKS.edit]); // the clause Jordan asked for comes next
     expect(lastReply(say(s, "What did Jordan ask for?"))).toContain(`Jordan Blake asked: "${JORDAN}"`);
   });
 
@@ -296,7 +296,7 @@ describe("5 and 6. approvals, then learning", () => {
     const rule = step6();
     expect(rule.id).toBe("PB-SEC-01");
     expect(rule.evidence.map((e) => e.vendor)).toEqual(["Lumen Ridge Analytics", "Cobalt Harbor Logging", "Fernway Data", "Acme Cloud"]);
-    expect(chips()).toEqual([DEMO_SENTENCES[3]]);
+    expect(chips()).toEqual([DEMO_SENTENCES[3], "What did Jordan ask for?", DOCUMENT_ASKS.clause, COLLECTION_SENTENCE]); // the next contract first
     expect(pendingProposals(appStore.getState(), history)).toBe(0); // published: nothing left to review
   });
 
@@ -404,7 +404,7 @@ describe("8. (optional) the collection: whether Security has the evidence", () =
     click(s, "approve");
     closeMatter();
     toolHandlers.readCollection({ collectionId: COLLECTION_ID }); // Ask in a thread, or Start on the Agents page
-    expect(chips()).toEqual([COLLECTION_SENTENCE]);
+    expect(chips()).toEqual([COLLECTION_SENTENCE, REVIEWS_GOING_SENTENCE]);
     const steps = say(s, COLLECTION_SENTENCE);
     expect(names(steps).filter((n) => n !== "fillCollectionCell")).toEqual(["readCollection"]);
     // One call per cell, one cell per document, every document in the collection.
@@ -419,7 +419,7 @@ describe("8. (optional) the collection: whether Security has the evidence", () =
     const security = groupSendBacks(sendBacksFrom(history)).find((g) => g.key === "security_evidence")!;
     expect(lastReply(steps)).toContain(`${totalDaysLost(security.sendBacks)} days lost`);
     expect(appStore.getState().collectionCells).toHaveLength(8);
-    expect(chips()).toEqual([]);
+    expect(chips()).toEqual([REVIEWS_GOING_SENTENCE]);
   });
 
   it("a full review fills all 48 cells, a row per model call, one tool call per cell", () => {
@@ -435,7 +435,7 @@ describe("8. (optional) the collection: whether Security has the evidence", () =
   });
 
   it("an agent's Start leaves its opening line ready in the new thread", () => {
-    expect(chipsFor(appStore.getState(), REVIEWS_GOING_SENTENCE)).toEqual([REVIEWS_GOING_SENTENCE]);
+    expect(chipsFor(appStore.getState(), REVIEWS_GOING_SENTENCE)).toEqual([REVIEWS_GOING_SENTENCE, DEMO_SENTENCES[0], DOCUMENT_ASKS.edit]); // its line first, then the rest
     expect(lastReply(say(newSession(), REVIEWS_GOING_SENTENCE))).toContain("Before go-live: 6 reviews");
   });
 });

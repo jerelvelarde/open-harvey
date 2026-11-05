@@ -11,7 +11,8 @@
 //   (ChatUserMessage.tsx).
 // - input: ChatComposer, CopilotKit's composer with the suggestion chips pinned above it (the chips
 //   follow the story: see useSuggestionChips.ts), no attachments menu and no disclaimer line.
-// - welcomeScreen: a short intro above that composer, naming the open matter.
+// - welcomeScreen: a short intro above that composer (ChatGreeting.tsx); the message view draws the
+//   same greeting in a thread that is empty because it was just opened after earlier work.
 // The chat always answers: without a key the scripted mock plays the demo (lib/mock-model.ts). An
 // error from a run shows above the chat and clears itself after the next run that succeeds.
 
@@ -36,9 +37,9 @@ import { useAppState } from "@/lib/store";
 import { DISCLAIMER } from "@/lib/company";
 import { clearOpening } from "@/components/shell-state";
 import { COLLECTION_NAME } from "@/lib/collection";
-import { OPENING_LINES } from "./chips";
 import { useWaitingGate } from "./gate-state";
 import { matterThread } from "./thread-segments";
+import { ChatGreeting } from "./ChatGreeting";
 import { ChatUserMessage } from "./ChatUserMessage";
 import { useTurnWorking } from "./useTurnWorking";
 import { TurnSummary } from "./useWorkRows";
@@ -72,6 +73,12 @@ function MessageView(props: CopilotChatMessageViewProps) {
     <CopilotChatMessageView {...props} {...MESSAGE_VIEW_OPTIONS} messages={messages} isRunning={working}>
       {({ messageElements, interruptElement }) => (
         <div data-testid="copilot-message-list" className="copilotKitMessages">
+          {messages.length === 0 && !working && (
+            // A new thread after earlier work: CopilotChat's welcome screen doesn't show, so the greeting goes here.
+            <div className="flex min-h-[55vh] flex-col justify-end pb-6">
+              <ChatGreeting />
+            </div>
+          )}
           {setAside > 0 && title && (
             <div className="mb-2 flex items-center gap-3 text-small text-muted" data-testid="matter-divider">
               <span className="h-px flex-1 bg-hairline" />
@@ -151,15 +158,14 @@ function ChatComposer(props: CopilotChatInputProps) {
   const working = useTurnWorking(props.isRunning ?? false);
   const { agent } = useAgent({ updates: [UseAgentUpdate.OnMessagesChanged] });
   const { activeMatterId, activeCollectionId } = useAppState();
-  // In an empty thread (a matter just opened, a page just loaded, an agent just started) only an opening line makes sense.
+  // The chips follow the open thread's state (chips.ts), so an empty thread offers what can start it.
   const threadId = activeMatterId ?? activeCollectionId;
   const from = useThreadStart(threadId, agent.messages.length);
   const empty = matterThread(agent.messages, threadId, from).messages.length === 0;
-  const offered = empty ? suggestions.filter((chip) => OPENING_LINES.includes(chip.message)) : suggestions;
   useEffect(() => {
     if (!empty) clearOpening(); // an agent's opening line is offered once, in the thread it started
   }, [empty]);
-  const chips = working || cardWaiting ? [] : offered;
+  const chips = working || cardWaiting ? [] : suggestions;
   return (
     <div>
       {chips.length > 0 && (
@@ -184,28 +190,12 @@ function ChatComposer(props: CopilotChatInputProps) {
   );
 }
 
-/** Before the first message: the open matter and what the copilot does with it, then the composer (with its chips). */
+/** Before the chat's first message: the greeting (ChatGreeting.tsx), then the composer (with its chips). */
 function ChatWelcome({ input }: WelcomeProps) {
-  const state = useAppState();
-  const active = state.activeMatterId ? getMatter(state.activeMatterId) : null;
-  const collection = state.activeCollectionId !== null;
   return (
     <div data-testid="copilot-welcome-screen" className="flex h-full min-h-0 flex-col">
       <div className="mx-auto flex min-h-0 w-full max-w-[720px] flex-1 flex-col justify-end overflow-y-auto px-4 pb-6 max-sm:justify-start max-sm:pt-8">
-        {active ? (
-          <p className="font-serif text-title text-ink">{matterTitle(active)}</p>
-        ) : collection ? (
-          <p className="font-serif text-title text-ink">{COLLECTION_NAME}</p>
-        ) : (
-          <p className="text-title font-semibold tracking-[-0.01em] text-ink">{LABELS.welcomeMessageText}</p>
-        )}
-        <p className="mt-2 max-w-[60ch] text-muted">
-          {active
-            ? "Ask me to review it. I propose a plan from the playbook, run it once you approve it, and cite every finding to its passage."
-            : collection
-              ? "Ask a question of every contract in it. I answer its review table one cell at a time, each answer quoted and cited. I write only to that table, never to a contract, redline or playbook rule."
-              : "Name a contract and I'll propose a review plan from the playbook. Nothing runs until you approve it."}
-        </p>
+        <ChatGreeting />
       </div>
       <div className="pb-4">{input}</div>
     </div>

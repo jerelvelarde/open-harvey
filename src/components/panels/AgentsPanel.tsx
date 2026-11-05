@@ -8,10 +8,10 @@
 import { Archive, FilePen, FileText, RotateCcw } from "lucide-react";
 import { startThread } from "@/components/shell-state";
 import { Button } from "@/components/ui/Card";
-import { COLLECTION, REVIEWS_GOING, chipsFor } from "@/copilot/chips";
+import { BRIGHTWATER, COLLECTION, OPENING, REVIEWS_GOING } from "@/copilot/chips";
 import { AGENTS, agentToday, type AgentId } from "@/lib/agents";
 import { DOCUMENT_ASKS } from "@/lib/demo-script";
-import { ACME_ID } from "@/lib/matters";
+import { ACME_ID, BRIGHTWATER_ID } from "@/lib/matters";
 import type { PastReview } from "@/lib/learning";
 import { appStore, closeMatter, useAppState, type AppState } from "@/lib/store";
 import { openCollectionThread } from "./CollectionsPanel";
@@ -23,7 +23,10 @@ function openingLine(id: AgentId, state: AppState): string | null {
   if (id === "collection-review") return state.collectionCells.length ? null : COLLECTION;
   if (id === "send-back-analysis") return REVIEWS_GOING;
   if (id === "document-drafting") return state.matters[ACME_ID]?.planApprovedAt ? DOCUMENT_ASKS.comments : DOCUMENT_ASKS.edit;
-  return chipsFor({ ...state, activeMatterId: null, activeCollectionId: null })[0] ?? null;
+  // Contract review: the next contract to review, once its moment in the story has come.
+  if (!state.matters[ACME_ID]?.planApprovedAt) return OPENING;
+  const learned = state.publishedRules.some((r) => r.id === "PB-SEC-01");
+  return learned && !state.matters[BRIGHTWATER_ID] ? BRIGHTWATER : null;
 }
 
 function start(id: AgentId) {

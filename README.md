@@ -65,9 +65,11 @@ Start from a clean slate with **Reset demo** (in Maya's menu at the foot of the 
 Spaces page opens ("Vendor contracts"), with Acme Cloud and the six reviews imported when Open Harvey went
 live on Monday, as outcomes only. The sidebar holds New thread, Agents, Collections, Analytics, Playbooks,
 Recents (the threads) and Spaces (the matters). Click **Open** on Acme Cloud: the assistant view opens,
-with the copilot's thread at the centre and the review on the right rail (Plan and Work). Type the lines in quotes into the thread. Chips offer the
-lines the copilot could sensibly suggest (review this, send it, where is it); Maya's reason in step 4 is
-her judgment, so the presenter types it.
+with the copilot's thread at the centre and the review on the right rail (Plan and Work). Type the lines in quotes into the thread, or click
+them: every line the scripted mock understands is always offered as a chip above the composer where it
+makes sense (the next step first, then the document asks and "How are reviews going?", at most four), and
+an empty thread greets Maya with what is on her desk. Brightwater and the collection's question wait until
+PB-SEC-01 is published, so they don't spoil the learning beat.
 
 1. **The ask.** "Review the Acme Cloud MSA and get it ready to sign." The copilot reads the matter (14
    sections, $720,000 over 36 months) and proposes the 17-task plan as a card with **Approve plan** and
@@ -100,7 +102,7 @@ her judgment, so the presenter types it.
    Adler?" It never changes your value back. (§8.3 of the contract lifts the cap only for indemnities and
    gross negligence, fraud or willful misconduct, so data breaches are capped: the $1,000,000 data-breach
    cap is a real gain, not a give-away.)
-4. **The gate.** Type the reason (no chip offers it): "Acme won't go above 6 months. The $1M data-breach
+4. **The gate.** Type the reason (or click its chip): "Acme won't go above 6 months. The $1M data-breach
    cap covers the exposure we care about." Then "Send it for approval." An approval card: "Send the Acme
    review to Rachel Adler, Jordan Blake and Elena Ortiz for approval?" with the route, the rule behind each
    approver and your reason, and **Send for approval** / **Keep editing**. Nothing is sent until you click,

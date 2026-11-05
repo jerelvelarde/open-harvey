@@ -1,15 +1,11 @@
 // Concept: suggestions. Chips above the chat input, written the way the presenter would type them,
-// that follow the story's state so the next line is one click away (copilot/chips.ts):
-// - nothing open: "Review the Acme Cloud MSA and get it ready to sign";
-// - the review has run: "Send it for approval";
-// - Maya's redline still deviates and has no reason: no chip (the reason is hers to type);
-// - sent: where it is; sent back: what the approver asked for;
-// - once a person has published PB-SEC-01 in Insights: the next contract, Brightwater Metrics.
-//   Before that, it would spoil the beat;
-// - the collection's thread, before its table is filled: the security evidence question (step 8);
-// - a thread an agent's Start button opened: that agent's opening line.
-// The scripted mock understands every chip (lib/demo-script.ts). ChatPanel.tsx draws them pinned
-// above the composer.
+// that follow the story's state so every line the scripted mock understands is one click away where
+// it makes sense (copilot/chips.ts): the next step first (review, the reason, send, where it is, what
+// the approver asked for, the next contract), then what else the copilot can do from here (the
+// document asks, the collection, how reviews are going), at most four. Nothing while the plan runs;
+// Brightwater and the collection's question wait until PB-SEC-01 is published. A thread an agent's
+// Start button opened offers that agent's line first. The mock understands every chip
+// (demo-script.test.ts checks it at every step). ChatPanel.tsx draws them pinned above the composer.
 
 import { useConfigureSuggestions } from "@copilotkit/react-core/v2";
 import { useShell } from "@/components/shell-state";
